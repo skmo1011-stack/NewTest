@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Yellowstone 旅行ルートマップ 2026</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Montserrat:wght@600;700;800&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{font-family:'Noto Sans JP',sans-serif;background:#0d1117;color:#e0e0e0;display:flex;flex-direction:column;height:100vh}
+.header{background:linear-gradient(135deg,#1B4332 0%,#2d6a4f 100%);padding:9px 18px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;border-bottom:2px solid #40916c}
+.header h1{font-family:'Montserrat',sans-serif;font-size:16px;color:#fff;letter-spacing:.3px}
+.header p{font-size:11px;color:#95d5b2;margin-top:2px}
+.btn-print{background:#40916c;color:#fff;border:none;padding:6px 14px;border-radius:18px;font-size:12px;cursor:pointer;font-family:'Montserrat',sans-serif;font-weight:700;transition:background .2s}
+.btn-print:hover{background:#52b788}
+.tabs{display:flex;background:#161b22;border-bottom:2px solid #21262d;flex-shrink:0;overflow-x:auto}
+.tab{padding:9px 16px;color:#8b949e;cursor:pointer;font-size:12.5px;font-weight:600;border-bottom:3px solid transparent;white-space:nowrap;transition:all .18s;user-select:none}
+.tab .tab-date{margin-left:6px;color:#8b949e;font-weight:400;font-size:11px}
+.tab.active{color:#fff;border-bottom-color:var(--day-accent);background:#0d1117}
+.tab:hover:not(.active){color:#c9d1d9;background:#1c2128}
+.main{flex:1;position:relative;overflow:hidden}
+.day-section{display:none;position:absolute;inset:0}
+.day-section.visible{display:flex}
+.map-wrap{flex:1;overflow:hidden;position:relative}
+.day-map{width:100%;height:100%}
+.side-panel{width:290px;background:#161b22;border-left:1px solid #30363d;display:flex;flex-direction:column;overflow:hidden;flex-shrink:0}
+.panel-head{padding:11px 13px 10px;border-bottom:1px solid #21262d;padding-left:14px}
+.panel-day{font-family:'Montserrat',sans-serif;font-size:13px;font-weight:800;color:#fff}
+.panel-title{font-size:11.5px;color:#8b949e;margin-top:3px;line-height:1.4}
+.panel-dist{font-size:11px;font-weight:600;margin-top:4px}
+.panel-body{flex:1;overflow-y:auto;padding:6px 0}
+.panel-body::-webkit-scrollbar{width:4px}
+.panel-body::-webkit-scrollbar-track{background:#0d1117}
+.panel-body::-webkit-scrollbar-thumb{background:#30363d;border-radius:2px}
+.stops-section,.sched-section{padding:8px 13px 10px}
+.sched-section{border-top:1px solid #21262d;margin-top:2px}
+.stops-title,.sched-title{font-size:9.5px;font-weight:700;color:#6e7681;letter-spacing:1.2px;text-transform:uppercase;margin-bottom:7px}
+.stop-item{display:flex;gap:9px;padding:4px 0;align-items:flex-start}
+.stop-num{width:21px;height:21px;border-radius:50%;color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.stop-info{flex:1}
+.stop-name{font-size:11.5px;color:#e0e0e0;font-weight:500;line-height:1.3}
+.stop-time{font-size:10.5px;font-weight:700;margin-top:1px}
+.stop-note{font-size:10px;color:#8b949e;margin-top:1px}
+.stop-connector{width:2px;height:12px;background:#21262d;margin:2px 0 2px 9px}
+.sched-row{display:flex;gap:7px;padding:3.5px 0;border-bottom:1px solid #21262d;align-items:flex-start}
+.sched-row:last-child{border-bottom:none}
+.sched-time{font-size:10.5px;font-weight:700;min-width:46px;padding-top:1px;flex-shrink:0}
+.sched-desc{font-size:11px;color:#c9d1d9;line-height:1.45}
+.info-box{margin:6px 12px;padding:8px 10px;border-radius:7px;font-size:10.5px;line-height:1.6}
+.info-hotel{background:#0e2233;border:1px solid #1e4766;color:#7ec8e3}
+.info-note{background:#1e1e0e;border:1px solid #4a4a10;color:#d4c547}
+.leaflet-popup-content-wrapper{background:#1e2530;color:#e0e0e0;border:1px solid #30363d;border-radius:8px;box-shadow:0 4px 15px rgba(0,0,0,.5)}
+.leaflet-popup-tip{background:#1e2530}
+.leaflet-popup-content{margin:10px 14px;font-family:'Noto Sans JP',sans-serif}
+.popup-name{font-size:13px;font-weight:700;color:#fff;margin-bottom:4px}
+.popup-time{font-size:11px;font-weight:600}
+.popup-note{font-size:11px;color:#8b949e;margin-top:2px}
+@media print{
+  html,body{height:auto;overflow:visible;background:#fff}
+  .header,.tabs,.btn-print{display:none!important}
+  .main{position:static;height:auto;overflow:visible}
+  .day-section{display:flex!important;position:relative;page-break-after:always;height:100vh}
+  .day-section:last-child{page-break-after:avoid}
+  .side-panel{background:#fff;border-left:2px solid #ddd}
+  .stop-name,.sched-desc,.panel-title,.panel-day{color:#000}
+  .info-hotel{background:#e8f4ff;border:1px solid #aaccee;color:#003366}
+  .info-note{background:#fffbe6;border:1px solid #ccaa00;color:#664400}
+  .sched-row{border-bottom:1px solid #eee}
+}
+</style>
+</head>
+<body>
+<div class="header">
+  <div>
+    <h1>✈ Yellowstone 家族旅行 — ルートマップ 2026【最終版】</h1>
+    <p>Junichi · Yoko · Nayuka · Hironao &nbsp;|&nbsp; 6/17（水）– 6/21（日）</p>
+  </div>
+  <button class="btn-print" onclick="printAll()">🖨 PDF保存</button>
+</div>
+<div class="tabs"><div class="tab active" data-day="0" style="--day-accent:#3a86ff" onclick="switchDay(0)"><b>Day 0</b><span class="tab-date">6/17 水</span></div><div class="tab" data-day="1" style="--day-accent:#fb5607" onclick="switchDay(1)"><b>Day 1</b><span class="tab-date">6/18 木</span></div><div class="tab" data-day="2" style="--day-accent:#8338ec" onclick="switchDay(2)"><b>Day 2</b><span class="tab-date">6/19 金</span></div><div class="tab" data-day="3" style="--day-accent:#06d6a0" onclick="switchDay(3)"><b>Day 3</b><span class="tab-date">6/20 土</span></div><div class="tab" data-day="4" style="--day-accent:#ef233c" onclick="switchDay(4)"><b>Day 4</b><span class="tab-date">6/21 日</span></div></div>
+<div class="main" id="main">
+  
+  <div class="day-section  visible" data-day="0" style="--day-accent:#3a86ff">
+    <div class="map-wrap">
+      <div id="map-0" class="day-map"></div>
+    </div>
+    <div class="side-panel">
+      <div class="panel-head" style="border-left:4px solid #3a86ff">
+        <div class="panel-day">Day 0 &nbsp; 6/17 水</div>
+        <div class="panel-title">到着日 — Jackson Hole → Gardiner（北ゲート）</div>
+        <div class="panel-dist" style="color:#3a86ff">🚗 約150km / 約3時間</div>
+      </div>
+      <div class="panel-body">
+        <div class="stops-section">
+          <div class="stops-title">経由地</div>
+          
+      <div class="stop-item">
+        <div class="stop-num" style="background:#3a86ff">1</div>
+        <div class="stop-info">
+          <div class="stop-name">JAC 空港 到着</div>
+          <div class="stop-time" style="color:#3a86ff">15:07</div>
+          <div class="stop-note">Alaska #3475</div>
+        </div>
+      </div>
+      <div class="stop-connector"></div>
+      <div class="stop-item">
+        <div class="stop-num" style="background:#3a86ff">2</div>
+        <div class="stop-info">
+          <div class="stop-name">AVIS レンタカー受取</div>
+          <div class="stop-time" style="color:#3a86ff">15:30</div>
+          <div class="stop-note">Mazda CX-50</div>
+        </div>
+      </div>
+      <div class="stop-connector"></div>
+      <div class="stop-item">
+        <div class="stop-num" style="background:#3a86ff">3</div>
+        <div class="stop-info">
+          <div class="stop-name">Ridgeline Hotel</div>
+          <div class="stop-time" style="color:#3a86ff">18:00〜</div>
+          <div class="stop-note">Gardiner MT・北ゲート前</div>
+        </div>
+      </div>
+      
+        </div>
+        <div class="sched-section">
+          <div class="sched-title">スケジュール</div>
+          
+      <div class="sched-row">
+        <div class="sched-time" style="color:#3a86ff">15:07</div>
+        <div class="sched-desc">✈ JAC到着（Alaska #3475）</div>
+      </div>
+      <div class="sched-row">
+        <div class="sched-time" style="color:#3a86ff">15:30</div>
+        <div class="sched-desc">🚗 AVIS レンタカー受取</div>
+      </div>
+      <div class="sched-row">
+        <div class="sched-time" style="color:#3a86ff">〜3h </div>
+        <div class="sched-desc">US-89N → Grand Teton → Yellowstone縦断</div>
+      </div>
+      <div class="sched-row">
+        <div class="sched-time" style="color:#3a86ff">18:30</div>
+        <div class="sched-desc">🍽 町で夕食（軽め）</div>
+      </div>
+      <div class="sched-row">
+        <div class="sched-time" style="color:#3a86ff">19:30</div>
+        <div class="sched-desc">🛒 スーパーで水・軽食購入</div>
+      </div>
+      <div class="sched-row">
+        <div class="sched-time" style="color:#3a86ff">20:30</div>
+        <div class="sched-desc">💤 就寝　★翌朝5:30起き</div>
+      </div>
+        </div>
+        <div class="info-box info-hotel">🏨 Ridgeline Hotel at Yellowstone（Gardiner, MT）</div>
+        <div class="info-box info-note">💡 初日は何もしないのが正解。翌朝に備えて早寝！</div>
+      </div>
+    </div>
+  </div>
+  <div class="day-section" data-day="1" style="--day-accent:#fb5607">
+    <div class="map-wrap">
+      <div id="map-1" class="day-map"></div>
+    </div>
+    <div class="side-panel">
+      <div class="panel-head" style="border-left:4px solid #fb5607">
+        <div class="panel-day">Day 1 &nbsp; 6/18 木</div>
+        <div class="panel-title">Grand Canyon & 動物の日</div>
+        <div class="panel-dist" style="color:#fb5607">🚗 園内移動 約80km</div>
+      </div>
+      <div class="panel-body">
+        <div class="stops-section">
+          <div class="stops-title">経由地</div>
+          
+      <div class="stop-item">
+        <div class="stop-num" style="background:#fb5607">1</div>
+        <div class="stop-info">
+          <div class="stop-name">Ridgeline Hotel 出発</div>
+          <div class="stop-time" style="color:#fb5607">6:00</div>
+          <div class="stop-note">早朝出発</div>
+        </div>
+      </div>
+      <div class="stop-connector"></div>
+      <div class="stop-item">
+        <div class="stop-num" style="background:#fb5607">2</div>
+        <div class="stop-info">
+          <div class="stop-name">Mammoth Hot Springs</div>
+          <div class="stop-time" style="color:#fb5607">7:00</div>
+          <div class="stop-note">温泉テラス・野生動物</div>
+        </div>
+      </div>
+      <div class="stop-connector"></div>
+      <div class="stop-item">
+        <div class="stop-num" style="background:#fb5607">3</div>
+        <div class="stop-info">
+          <div class="stop-name">Upper Falls</div>
+          <div class="stop-time" style="color:#fb5607">9:00</div>
+          <div class="stop-note">Yellowstone滝</div>
+        </div>
+      </div>
+      <div class="stop-connector"></div>
+      <div class="stop-item">
+        <div class="stop-num" style="background:#fb5607">4</div>
+        <div class="stop-info">
+          <div class="stop-name">Inspiration Point</div>
+          <div class="stop-time" style="color:#fb5607">10:00</div>
+          <div class="stop-note">Grand Canyon絶壁</div>
+        </div>
+      </div>
+      <div class="stop-connector"></div>
+      <div class="stop-item">
+        <div class="stop-num" style="background:#fb5607">5</div>
+        <div class="stop-info">
+          <div class="stop-name">Canyon Village 昼食</div>
+          <div class="stop-time" style="color:#fb5607">12:00</div>
+          <div class="stop-note">レストラン</div>
+        </div>
+      </div>
+      <div class="stop-connector"></div>
+      <div class="stop-item">
+        <div class="stop-num" style="background:#fb5607">6</div>
+        <div class="stop-info">
+          <div class="stop-name">Artist Point ★</div>
+          <div class="stop-time" style="color:#fb5607">13:00</div>
+          <div class="stop-note">Lower Falls 絶景・メインイベント</div>
+        </div>
+      </div>
+      <div class="stop-connector"></div>
+      <div class="stop-item">
+        <div class="stop-num" style="background:#fb5607">7</div>
+        <div class="stop-info">
+          <div class="stop-name">Canyon Lodge</div>
+          <div class="stop-time" style="color:#fb5607">13:30</div>
+          <div class="stop-note">チェックイン〜16:00休憩</div>
+        </div>
+      </div>
+      <div class="stop-connector"></div>
+      <div class="stop-item">
+        <div class="stop-num" style="background:#fb5607">8</div>
+        <div class="stop-info">
+          <div class="stop-name">Hayden Valley（夕方）</div>
+          <div class="stop-time" style="color:#fb5607">17:00</div>
+          <div class="stop-note">バイソン・エルク・鹿</div>
+        </div>
+      </div>
+      
+        </div>
+        <div class="sched-section">
+          <div class="sched-title">スケジュール</div>
+          
+      <div class="sched-row">
+        <div class="sched-time" style="color:#fb5607">6:00</div>
+        <div class="sched-desc">🚗 Ridgeline Hotel出発</div>
+      </div>
+      <div class="sched-row">
+        <div class="sched-time" style="color:#fb5607">7:00</div>
+        <div class="sched-desc">🌋 Mammoth Hot Springs</div>
+      </div>
+      <div class="sched-row">
+        <div class="sched-time" style="color:#fb5607">〜8:30</div>
+        <div class="sched-desc">Norris経由でCanyonへ南下</div>
+      </div>
+      <div class="sched-row">
+        <div class="sched-time" style="color:#fb5607">9:00</div>
+        <div class="sched-desc">💧 Upper Falls</div>
+      </div>
+      <div class="sched-row">
+        <div class="sched-time" style="color:#fb5607">10:00</div>
+        <div class="sched-desc">🏔 Inspiration Point</div>
+      </div>
+      <div class="sched-row">
+        <div class="sched-time" style="color:#fb5607">12:00</div>
+        <div class="sched-desc">🍽 Canyon Villageで昼食</div>
+      </div>
+      <div class="sched-row">
+        <div class="sched-time" style="color:#fb5607">13:00</div>
+        <div class="sched-desc">🎨 Artist Point ★メインイベント</div>
+      </div>
+      <div class="sched-row">
+        <div class="sched-time" style="color:#fb5607">13:30</div>
+        <div class="sched-desc">🏨 Canyon Lodge チェックイン・休憩</div>
+      </div>
+      <div class="sched-row">
+        <div class="sched-time" style="color:#fb5607">17:00</div>
+        <div class="sched-desc">🦬 Hayden Valley（夕方の動物）</div>
+      </div>
+      <div class="sched-row">
+        <div class="sched-time" style="color:#fb5607">19:00</div>
+        <div class="sched-desc">🍽 夕食（ロッジ）</div>
+      </div>
+        </div>
+        <div class="info-box info-hotel">🏨 Canyon Lodge & Cabins　確認番号: 20324752  ☎ 307-344-7311</div>
+        <div class="info-box info-note">💡 Artist Pointは午後13時が光のベストタイム！</div>
+      </div>
+    </div>
+  </div>
+  <div class="day-section" data-day="2" style="--day-accent:#8338ec">
+    <div class="map-wrap">
+      <div id="map-2" class="day-map"></div>
+    </div>
+    <div class="side-panel">
+      <div class="panel-head" style="border-left:4px solid #8338ec">
+        <div class="panel-day">Day 2 &nbsp; 6/19 金</div>
+        <div class="panel-title">間欠泉・色の世界 ＋ サイクリング</div>
+        <div class="panel-dist" style="color:#8338ec">🚗 園内移動 約90km</div>
+      </div>
+      <div class="panel-body">
+        <div class="stops-section">
+          <div class="stops-title">経由地</div>
+          
+      <div class="stop-item">
+        <div class="stop-num" style="background:#8338ec">1</div>
+        <div class="stop-info">
+          <div class="stop-name">Canyon Lodge 出発</div>
+          <div class="stop-time" style="color:#8338ec">8:30</div>
+          <div class="stop-note">Plan B：のんびり出発</div>
+        </div>
+      </div>
+      <div class="stop-connector"></div>
+      <div class="stop-item">
+        <div class="stop-num" style="background:#8338ec">2</div>
+        <div class="stop-info">
+          <div class="stop-name">Norris Geyser Basin</div>
+          <div class="stop-time" style="color:#8338ec">9:00</div>
+          <div class="stop-note">Porcelain Basin・蒸気・地鳴り</div>
+        </div>
+      </div>
+      <div class="stop-connector"></div>
+      <div class="stop-item">
+        <div class="stop-num" style="background:#8338ec">3</div>
+        <div class="stop-info">
+          <div class="stop-name">Grand Prismatic（Fairy Falls駐車場）</div>
+          <div class="stop-time" style="color:#8338ec">11:30</div>
+          <div class="stop-note">展望台→ボードウォークの順</div>
+        </div>
+      </div>
+      <div class="stop-connector"></div>
+      <div class="stop-item">
+        <div class="stop-num" style="background:#8338ec">4</div>
+        <div class="stop-info">
+          <div class="stop-name">Old Faithful Snow Lodge</div>
+          <div class="stop-time" style="color:#8338ec">14:30</div>
+          <div class="stop-note">チェックイン・荷物を置く</div>
+        </div>
+      </div>
+      <div class="stop-connector"></div>
+      <div class="stop-item">
+        <div class="stop-num" style="background:#8338ec">5</div>
+        <div class="stop-info">
+          <div class="stop-name">Biscuit Basin（サイクリング）</div>
+          <div class="stop-time" style="color:#8338ec">15:00</div>
+          <div class="stop-note">Snow Lodgeから自転車で片道4km</div>
+        </div>
+      </div>
+      <div class="stop-connector"></div>
+      <div class="stop-item">
+        <div class="stop-num" style="background:#8338ec">6</div>
+        <div class="stop-info">
+          <div class="stop-name">Old Faithful 噴出観察</div>
+          <div class="stop-time" style="color:#8338ec">17:30</div>
+          <div class="stop-note">風上側に座る・90分に1回</div>
+        </div>
+      </div>
+      
+        </div>
+        <div class="sched-section">
+          <div class="sched-title">スケジュール</div>
+          
+      <div class="sched-row">
+        <div class="sched-time" style="color:#8338ec">8:30</div>
+        <div class="sched-desc">🚗 Canyon Lodge出発</div>
+      </div>
+      <div class="sched-row">
+        <div class="sched-time" style="color:#8338ec">9:00</div>
+        <div class="sched-desc">🌋 Norris Geyser Basin（Porcelain Basin）</div>
+      </div>
+      <div class="sched-row">
+        <div class="sched-time" style="color:#8338ec">11:30</div>
+        <div class="sched-desc">🚗 Fairy Falls駐車場に駐車</div>
+      </div>
+      <div class="sched-row">
+        <div class="sched-time" style="color:#8338ec">11:45</div>
+        <div class="sched-desc">🌈 Grand Prismatic ボードウォーク</div>
+      </div>
+      <div class="sched-row">
+        <div class="sched-time" style="color:#8338ec">12:30</div>
+        <div class="sched-desc">🏔 Fairy Falls展望台（13時が発色ベスト）</div>
+      </div>
+      <div class="sched-row">
+        <div class="sched-time" style="color:#8338ec">14:30</div>
+        <div class="sched-desc">🏨 Old Faithful Snow Lodge チェックイン</div>
+      </div>
+      <div class="sched-row">
+        <div class="sched-time" style="color:#8338ec">15:00</div>
+        <div class="sched-desc">🚲 Snow Lodgeで自転車レンタル → Biscuit Basin</div>
+      </div>
+      <div class="sched-row">
+        <div class="sched-time" style="color:#8338ec">16:30</div>
+        <div class="sched-desc">🏛 Old Faithful Visitor Center（噴出時刻確認）</div>
+      </div>
+      <div class="sched-row">
+        <div class="sched-time" style="color:#8338ec">17:30</div>
+        <div class="sched-desc">⛲ Old Faithful 噴出観察★（風上側に座る！）</div>
+      </div>
+      <div class="sched-row">
+        <div class="sched-time" style="color:#8338ec">19:00</div>
+        <div class="sched-desc">🍽 夕食（Snow Lodge レストラン）</div>
+      </div>
+        </div>
+        <div class="info-box info-hotel">🏨 Old Faithful Snow Lodge & Cabins</div>
+        <div class="info-box info-note">💡 Grand Prismatic：展望台→ボードウォーク順で。13時の光が最高！</div>
+      </div>
+    </div>
+  </div>
+  <div class="day-section" data-day="3" style="--day-accent:#06d6a0">
+    <div class="map-wrap">
+      <div id="map-3" class="day-map"></div>
+    </div>
+    <div class="side-panel">
+      <div class="panel-head" style="border-left:4px solid #06d6a0">
+        <div class="panel-day">Day 3 &nbsp; 6/20 土</div>
+        <div class="panel-title">Grand Teton縦断 ＋ Jenny Lake</div>
+        <div class="panel-dist" style="color:#06d6a0">🚗 約140km / 約3時間</div>
+      </div>
+      <div class="panel-body">
+        <div class="stops-section">
+          <div class="stops-title">経由地</div>
+          
+      <div class="stop-item">
+        <div class="stop-num" style="background:#06d6a0">1</div>
+        <div class="stop-info">
+          <div class="stop-name">Old Faithful Lodge 出発</div>
+          <div class="stop-time" style="color:#06d6a0">7:30</div>
+          <div class="stop-note">南口へ向かう</div>
+        </div>
+      </div>
+      <div class="stop-connector"></div>
+      <div class="stop-item">
+        <div class="stop-num" style="background:#06d6a0">2</div>
+        <div class="stop-info">
+          <div class="stop-name">West Thumb Geyser Basin</div>
+          <div class="stop-time" style="color:#06d6a0">8:15</div>
+          <div class="stop-note">湖畔の間欠泉・短時間でOK</div>
+        </div>
+      </div>
+      <div class="stop-connector"></div>
+      <div class="stop-item">
+        <div class="stop-num" style="background:#06d6a0">3</div>
+        <div class="stop-info">
+          <div class="stop-name">Jenny Lake</div>
+          <div class="stop-time" style="color:#06d6a0">10:00</div>
+          <div class="stop-note">シャトルボートで対岸へ</div>
+        </div>
+      </div>
+      <div class="stop-connector"></div>
+      <div class="stop-item">
+        <div class="stop-num" style="background:#06d6a0">4</div>
+        <div class="stop-info">
+          <div class="stop-name">Jenny Lake 対岸散策</div>
+          <div class="stop-time" style="color:#06d6a0">11:00</div>
+          <div class="stop-note">Hidden Falls方面・平坦な道</div>
+        </div>
+      </div>
+      <div class="stop-connector"></div>
+      <div class="stop-item">
+        <div class="stop-num" style="background:#06d6a0">5</div>
+        <div class="stop-info">
+          <div class="stop-name">Moose-Wilson Road</div>
+          <div class="stop-time" style="color:#06d6a0">14:00</div>
+          <div class="stop-note">野生動物・狭い道注意</div>
+        </div>
+      </div>
+      <div class="stop-connector"></div>
+      <div class="stop-item">
+        <div class="stop-num" style="background:#06d6a0">6</div>
+        <div class="stop-info">
+          <div class="stop-name">Antler Inn</div>
+          <div class="stop-time" style="color:#06d6a0">16:30</div>
+          <div class="stop-note">Jackson市街チェックイン</div>
+        </div>
+      </div>
+      
+        </div>
+        <div class="sched-section">
+          <div class="sched-title">スケジュール</div>
+          
+      <div class="sched-row">
+        <div class="sched-time" style="color:#06d6a0">6:30</div>
+        <div class="sched-desc">🌅 起床</div>
+      </div>
+      <div class="sched-row">
+        <div class="sched-time" style="color:#06d6a0">7:30</div>
+        <div class="sched-desc">🚗 出発（南口→Grand Teton方面）</div>
+      </div>
+      <div class="sched-row">
+        <div class="sched-time" style="color:#06d6a0">8:15</div>
+        <div class="sched-desc">🌋 West Thumb Geyser Basin（湖畔の温泉）</div>
+      </div>
+      <div class="sched-row">
+        <div class="sched-time" style="color:#06d6a0">〜9:30</div>
+        <div class="sched-desc">Yellowstone南口→Grand Teton入園</div>
+      </div>
+      <div class="sched-row">
+        <div class="sched-time" style="color:#06d6a0">10:00</div>
+        <div class="sched-desc">⛵ Jenny Lake シャトルボート乗船</div>
+      </div>
+      <div class="sched-row">
+        <div class="sched-time" style="color:#06d6a0">11:00</div>
+        <div class="sched-desc">🥾 対岸散策（Hidden Falls・平坦）</div>
+      </div>
+      <div class="sched-row">
+        <div class="sched-time" style="color:#06d6a0">12:30</div>
+        <div class="sched-desc">🍽 ピクニック or ロッジ昼食</div>
+      </div>
+      <div class="sched-row">
+        <div class="sched-time" style="color:#06d6a0">14:00</div>
+        <div class="sched-desc">🦌 Moose-Wilson Road（野生動物・狭路注意）</div>
+      </div>
+      <div class="sched-row">
+        <div class="sched-time" style="color:#06d6a0">16:30</div>
+        <div class="sched-desc">🏙 Jackson Hole市街へ</div>
+      </div>
+      <div class="sched-row">
+        <div class="sched-time" style="color:#06d6a0">18:00</div>
+        <div class="sched-desc">🍽 夕食（Jackson市街）</div>
+      </div>
+        </div>
+        <div class="info-box info-hotel">🏨 Antler Inn, Jackson WY　予約番号: 5106732980  ☎ 307-733-2535</div>
+        <div class="info-box info-note">💡 Yellowstoneの「動」→ Grand Tetonの「静」へ。景色が激変！</div>
+      </div>
+    </div>
+  </div>
+  <div class="day-section" data-day="4" style="--day-accent:#ef233c">
+    <div class="map-wrap">
+      <div id="map-4" class="day-map"></div>
+    </div>
+    <div class="side-panel">
+      <div class="panel-head" style="border-left:4px solid #ef233c">
+        <div class="panel-day">Day 4 &nbsp; 6/21 日</div>
+        <div class="panel-title">帰宅日 — Oxbow Bend → Bear Lake → SLC</div>
+        <div class="panel-dist" style="color:#ef233c">🚗 約500km / 約6時間</div>
+      </div>
+      <div class="panel-body">
+        <div class="stops-section">
+          <div class="stops-title">経由地</div>
+          
+      <div class="stop-item">
+        <div class="stop-num" style="background:#ef233c">1</div>
+        <div class="stop-info">
+          <div class="stop-name">Antler Inn チェックアウト</div>
+          <div class="stop-time" style="color:#ef233c">7:00</div>
+          <div class="stop-note">早朝起床</div>
+        </div>
+      </div>
+      <div class="stop-connector"></div>
+      <div class="stop-item">
+        <div class="stop-num" style="background:#ef233c">2</div>
+        <div class="stop-info">
+          <div class="stop-name">Oxbow Bend</div>
+          <div class="stop-time" style="color:#ef233c">7:45</div>
+          <div class="stop-note">朝のリフレクション・野生動物</div>
+        </div>
+      </div>
+      <div class="stop-connector"></div>
+      <div class="stop-item">
+        <div class="stop-num" style="background:#ef233c">3</div>
+        <div class="stop-info">
+          <div class="stop-name">Jackson 出発</div>
+          <div class="stop-time" style="color:#ef233c">9:00</div>
+          <div class="stop-note">US-89 Southへ</div>
+        </div>
+      </div>
+      <div class="stop-connector"></div>
+      <div class="stop-item">
+        <div class="stop-num" style="background:#ef233c">4</div>
+        <div class="stop-info">
+          <div class="stop-name">Bear Lake</div>
+          <div class="stop-time" style="color:#ef233c">12:00</div>
+          <div class="stop-note">ターコイズブルーの湖・ラズベリーシェイク</div>
+        </div>
+      </div>
+      <div class="stop-connector"></div>
+      <div class="stop-item">
+        <div class="stop-num" style="background:#ef233c">5</div>
+        <div class="stop-info">
+          <div class="stop-name">SLC空港 AVIS返却</div>
+          <div class="stop-time" style="color:#ef233c">17:30</div>
+          <div class="stop-note">レンタカー返却</div>
+        </div>
+      </div>
+      <div class="stop-connector"></div>
+      <div class="stop-item">
+        <div class="stop-num" style="background:#ef233c">6</div>
+        <div class="stop-info">
+          <div class="stop-name">UA2097 SLC → SFO</div>
+          <div class="stop-time" style="color:#ef233c">20:10</div>
+          <div class="stop-note">確認番号 N60KXK</div>
+        </div>
+      </div>
+      
+        </div>
+        <div class="sched-section">
+          <div class="sched-title">スケジュール</div>
+          
+      <div class="sched-row">
+        <div class="sched-time" style="color:#ef233c">7:00</div>
+        <div class="sched-desc">🌅 起床・チェックアウト準備</div>
+      </div>
+      <div class="sched-row">
+        <div class="sched-time" style="color:#ef233c">7:45</div>
+        <div class="sched-desc">🦦 Oxbow Bend（朝のリフレクション★）</div>
+      </div>
+      <div class="sched-row">
+        <div class="sched-time" style="color:#ef233c">9:00</div>
+        <div class="sched-desc">🚗 出発　US-89 South</div>
+      </div>
+      <div class="sched-row">
+        <div class="sched-time" style="color:#ef233c">10:00</div>
+        <div class="sched-desc">Star Valley（Wyoming）を南下</div>
+      </div>
+      <div class="sched-row">
+        <div class="sched-time" style="color:#ef233c">12:00</div>
+        <div class="sched-desc">🏖 Bear Lake 到着（ターコイズブルーの湖）</div>
+      </div>
+      <div class="sched-row">
+        <div class="sched-time" style="color:#ef233c">12:30</div>
+        <div class="sched-desc">🍓 ラズベリーシェイク（LaBeau's等）＆ランチ</div>
+      </div>
+      <div class="sched-row">
+        <div class="sched-time" style="color:#ef233c">14:00</div>
+        <div class="sched-desc">🚗 Bear Lake出発　US-89→Logan→I-15</div>
+      </div>
+      <div class="sched-row">
+        <div class="sched-time" style="color:#ef233c">17:30</div>
+        <div class="sched-desc">🚗 SLC空港　AVIS返却</div>
+      </div>
+      <div class="sched-row">
+        <div class="sched-time" style="color:#ef233c">19:00</div>
+        <div class="sched-desc">✈ チェックイン・セキュリティ</div>
+      </div>
+      <div class="sched-row">
+        <div class="sched-time" style="color:#ef233c">20:10</div>
+        <div class="sched-desc">✈ UA2097 SLC発 → SFO</div>
+      </div>
+      <div class="sched-row">
+        <div class="sched-time" style="color:#ef233c">21:46</div>
+        <div class="sched-desc">🏠 SFO到着</div>
+      </div>
+        </div>
+        <div class="info-box info-hotel">✈ United Airlines UA2097  確認番号: N60KXK<br>Seat: 32C Yoko / 32D Nayuka / 32E Junichi / 32F Hironao</div>
+        <div class="info-box info-note">⚠️ SFO到着後：Lyft / Uber / Caltrain でサンノゼへ</div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+const DAYS_DATA = [{"day": 0, "label": "Day 0", "date": "6/17 水", "accent": "#3a86ff", "title": "到着日 — Jackson Hole → Gardiner（北ゲート）", "dist": "約150km / 約3時間", "mapCenter": [44.2, -110.72], "zoom": 9, "stops": [{"name": "JAC 空港 到着", "lat": 43.6088, "lon": -110.7376, "time": "15:07", "note": "Alaska #3475"}, {"name": "AVIS レンタカー受取", "lat": 43.6095, "lon": -110.736, "time": "15:30", "note": "Mazda CX-50"}, {"name": "Ridgeline Hotel", "lat": 45.0352, "lon": -110.7155, "time": "18:00〜", "note": "Gardiner MT・北ゲート前"}], "route": [[43.6088, -110.7376], [43.62, -110.738], [43.66, -110.738], [43.73, -110.724], [43.81, -110.673], [43.85, -110.637], [43.876, -110.605], [43.95, -110.661], [44.0, -110.664], [44.1, -110.663], [44.133, -110.669], [44.22, -110.614], [44.3, -110.556], [44.42, -110.574], [44.49, -110.443], [44.57, -110.38], [44.64, -110.44], [44.73, -110.492], [44.77, -110.46], [44.82, -110.43], [44.91, -110.415], [44.94, -110.57], [44.975, -110.695], [45.035, -110.716]]}, {"day": 1, "label": "Day 1", "date": "6/18 木", "accent": "#fb5607", "title": "Grand Canyon & 動物の日", "dist": "園内移動 約80km", "mapCenter": [44.82, -110.6], "zoom": 11, "stops": [{"name": "Ridgeline Hotel 出発", "lat": 45.0352, "lon": -110.7155, "time": "6:00", "note": "早朝出発"}, {"name": "Mammoth Hot Springs", "lat": 44.977, "lon": -110.696, "time": "7:00", "note": "温泉テラス・野生動物"}, {"name": "Upper Falls", "lat": 44.7129, "lon": -110.4997, "time": "9:00", "note": "Yellowstone滝"}, {"name": "Inspiration Point", "lat": 44.7245, "lon": -110.4967, "time": "10:00", "note": "Grand Canyon絶壁"}, {"name": "Canyon Village 昼食", "lat": 44.7357, "lon": -110.4989, "time": "12:00", "note": "レストラン"}, {"name": "Artist Point ★", "lat": 44.721, "lon": -110.4794, "time": "13:00", "note": "Lower Falls 絶景・メインイベント"}, {"name": "Canyon Lodge", "lat": 44.7325, "lon": -110.4862, "time": "13:30", "note": "チェックイン〜16:00休憩"}, {"name": "Hayden Valley（夕方）", "lat": 44.6438, "lon": -110.4555, "time": "17:00", "note": "バイソン・エルク・鹿"}], "route": [[45.035, -110.716], [44.975, -110.695], [44.96, -110.704], [44.726, -110.704], [44.73, -110.6], [44.73, -110.492], [44.7, -110.474], [44.712, -110.5], [44.718, -110.498], [44.725, -110.497], [44.73, -110.492], [44.735, -110.499], [44.728, -110.49], [44.721, -110.479], [44.726, -110.483], [44.733, -110.486], [44.7, -110.474], [44.66, -110.458], [44.644, -110.455], [44.66, -110.458], [44.7, -110.474], [44.733, -110.486]]}, {"day": 2, "label": "Day 2", "date": "6/19 金", "accent": "#8338ec", "title": "間欠泉・色の世界 ＋ サイクリング", "dist": "園内移動 約90km", "mapCenter": [44.58, -110.68], "zoom": 11, "stops": [{"name": "Canyon Lodge 出発", "lat": 44.7325, "lon": -110.4862, "time": "8:30", "note": "Plan B：のんびり出発"}, {"name": "Norris Geyser Basin", "lat": 44.7262, "lon": -110.7043, "time": "9:00", "note": "Porcelain Basin・蒸気・地鳴り"}, {"name": "Grand Prismatic（Fairy Falls駐車場）", "lat": 44.535, "lon": -110.842, "time": "11:30", "note": "展望台→ボードウォークの順"}, {"name": "Old Faithful Snow Lodge", "lat": 44.4567, "lon": -110.8295, "time": "14:30", "note": "チェックイン・荷物を置く"}, {"name": "Biscuit Basin（サイクリング）", "lat": 44.4866, "lon": -110.8427, "time": "15:00", "note": "Snow Lodgeから自転車で片道4km"}, {"name": "Old Faithful 噴出観察", "lat": 44.4605, "lon": -110.8282, "time": "17:30", "note": "風上側に座る・90分に1回"}], "route": [[44.733, -110.486], [44.73, -110.492], [44.73, -110.6], [44.726, -110.704], [44.71, -110.73], [44.69, -110.79], [44.66, -110.854], [44.61, -110.854], [44.555, -110.847], [44.535, -110.842], [44.5, -110.834], [44.47, -110.83], [44.46, -110.828], [44.472, -110.835], [44.487, -110.843], [44.472, -110.835], [44.46, -110.828]]}, {"day": 3, "label": "Day 3", "date": "6/20 土", "accent": "#06d6a0", "title": "Grand Teton縦断 ＋ Jenny Lake", "dist": "約140km / 約3時間", "mapCenter": [43.95, -110.73], "zoom": 10, "stops": [{"name": "Old Faithful Lodge 出発", "lat": 44.4567, "lon": -110.8295, "time": "7:30", "note": "南口へ向かう"}, {"name": "West Thumb Geyser Basin", "lat": 44.4202, "lon": -110.5726, "time": "8:15", "note": "湖畔の間欠泉・短時間でOK"}, {"name": "Jenny Lake", "lat": 43.7479, "lon": -110.7253, "time": "10:00", "note": "シャトルボートで対岸へ"}, {"name": "Jenny Lake 対岸散策", "lat": 43.741, "lon": -110.744, "time": "11:00", "note": "Hidden Falls方面・平坦な道"}, {"name": "Moose-Wilson Road", "lat": 43.62, "lon": -110.8, "time": "14:00", "note": "野生動物・狭い道注意"}, {"name": "Antler Inn", "lat": 43.4781, "lon": -110.7633, "time": "16:30", "note": "Jackson市街チェックイン"}], "route": [[44.46, -110.828], [44.444, -110.76], [44.43, -110.69], [44.42, -110.574], [44.36, -110.53], [44.26, -110.597], [44.133, -110.669], [44.05, -110.664], [43.95, -110.661], [43.876, -110.605], [43.85, -110.64], [43.82, -110.66], [43.78, -110.68], [43.748, -110.726], [43.72, -110.748], [43.69, -110.762], [43.66, -110.778], [43.625, -110.798], [43.6, -110.812], [43.57, -110.82], [43.54, -110.808], [43.51, -110.79], [43.48, -110.763]]}, {"day": 4, "label": "Day 4", "date": "6/21 日", "accent": "#ef233c", "title": "帰宅日 — Oxbow Bend → Bear Lake → SLC", "dist": "約500km / 約6時間", "mapCenter": [42.4, -111.2], "zoom": 8, "stops": [{"name": "Antler Inn チェックアウト", "lat": 43.4781, "lon": -110.7633, "time": "7:00", "note": "早朝起床"}, {"name": "Oxbow Bend", "lat": 43.8642, "lon": -110.5682, "time": "7:45", "note": "朝のリフレクション・野生動物"}, {"name": "Jackson 出発", "lat": 43.4781, "lon": -110.7633, "time": "9:00", "note": "US-89 Southへ"}, {"name": "Bear Lake", "lat": 41.95, "lon": -111.38, "time": "12:00", "note": "ターコイズブルーの湖・ラズベリーシェイク"}, {"name": "SLC空港 AVIS返却", "lat": 40.7903, "lon": -111.9771, "time": "17:30", "note": "レンタカー返却"}, {"name": "UA2097 SLC → SFO", "lat": 40.792, "lon": -111.976, "time": "20:10", "note": "確認番号 N60KXK"}], "route": [[43.478, -110.763], [43.51, -110.755], [43.7, -110.722], [43.86, -110.595], [43.864, -110.568], [43.86, -110.595], [43.81, -110.64], [43.7, -110.722], [43.478, -110.763], [43.3, -110.86], [43.1, -110.956], [42.741, -110.934], [42.4, -111.025], [42.32, -111.29], [42.2, -111.38], [41.95, -111.38], [41.74, -111.833], [41.22, -111.973], [40.79, -111.977]]}];
+const maps = {};
+
+function initMap(idx) {
+  if (maps[idx]) { maps[idx].invalidateSize(); return; }
+  const d = DAYS_DATA[idx];
+  const map = L.map('map-' + idx, { center: d.mapCenter, zoom: d.zoom, zoomControl: true });
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    maxZoom: 19,
+  }).addTo(map);
+
+  const routeCoords = d.route;
+  L.polyline(routeCoords, { color:'#000', weight:8, opacity:0.2, lineJoin:'round', lineCap:'round' }).addTo(map);
+  const poly = L.polyline(routeCoords, { color:d.accent, weight:5, opacity:0.9, lineJoin:'round', lineCap:'round' }).addTo(map);
+  L.polyline(routeCoords, { color:'#fff', weight:1.5, opacity:0.35, dashArray:'6 12', lineJoin:'round' }).addTo(map);
+
+  d.stops.forEach((s, i) => {
+    const html = `<div style="width:28px;height:28px;border-radius:50%;background:${d.accent};border:3px solid white;display:flex;align-items:center;justify-content:center;color:white;font-weight:800;font-size:11px;box-shadow:0 3px 8px rgba(0,0,0,.6);font-family:Montserrat,sans-serif">${i+1}</div>`;
+    const icon = L.divIcon({html, className:'', iconSize:[28,28], iconAnchor:[14,14]});
+    L.marker([s.lat, s.lon], {icon}).addTo(map)
+      .bindPopup(`<div class="popup-name">${s.name}</div><div class="popup-time" style="color:${d.accent}">${s.time}</div><div class="popup-note">${s.note}</div>`);
+  });
+
+  map.fitBounds(poly.getBounds(), {padding:[35,35]});
+  maps[idx] = map;
+}
+
+function switchDay(idx) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', +t.dataset.day===idx));
+  document.querySelectorAll('.day-section').forEach(s => s.classList.toggle('visible', +s.dataset.day===idx));
+  setTimeout(() => initMap(idx), 60);
+}
+
+function printAll() {
+  document.querySelectorAll('.day-section').forEach(s => s.classList.add('visible'));
+  DAYS_DATA.forEach((_,i) => initMap(i));
+  setTimeout(() => {
+    window.print();
+    const cur = +document.querySelector('.tab.active').dataset.day;
+    setTimeout(() => {
+      document.querySelectorAll('.day-section').forEach(s =>
+        s.classList.toggle('visible', +s.dataset.day===cur));
+    }, 1000);
+  }, 2500);
+}
+
+window.addEventListener('load', () => initMap(0));
+</script>
+</body>
+</html>
